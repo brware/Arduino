@@ -1,0 +1,196 @@
+//------------------------------------------------------------------------------------------
+//
+// ----------------- Configura MQTT
+//
+//------------------------------------------------------------------------------------------
+
+int configMqtt (String IDmqtt) {
+  int i = 0;
+  //char host [30], user [2], pwd [20];
+  String host, user, pwd;
+  String  str, str2;
+  char aux [30];
+   
+  
+  mqtt.setTopicoPub ("PlayadeOne/Pub");
+  mqtt.setTopicoSub ("PlayadeOne/Sub");
+  mqtt.setTopicoConnect ("PlayadeOne/Connect");
+  mqtt.setTopicoWill ("PlayadeOne/Will");
+  mqtt.setTopicoConfigPub ("PlayadeOne/ConfigPub");
+  mqtt.setTopicoConfigSub ("PlayadeOne/ConfigSub");
+ 
+
+  Serial.println ("Construtor MQTT");
+  // setup mqtt client
+  mqtt.setMqttID (IDmqtt); 
+  Serial.println (IDmqtt.c_str());
+/*
+  str = mqtt.getMqttHost();
+  strcpy (host, str.c_str());
+  rtox0 ((char*) host);
+  Serial.println (host);
+*/
+  host = mqtt.getMqttHost();
+  //mqttClient.begin(host.c_str(),ethClient);
+  mqttClient.begin("brware.com.br",ethClient);
+
+  Serial.println ("MQTT passou do begin 0");
+  
+  vTaskDelay(pdMS_TO_TICKS(500));
+  /*
+  str = getMqttUser();
+  strcpy (user, str.c_str());
+  rtox0 (user);
+  Serial.println ("MQTT passou do begin 1");
+  str = getMqttPassWord();
+  strcpy (pwd, str.c_str());
+  rtox0 (pwd);
+  */
+  user = mqtt.getMqttUser();
+  pwd = mqtt.getMqttPassWord();
+
+  Serial.println ("MQTT passou do begin 2");
+
+  //mqttClient.connect(IDmqtt.c_str(), user.c_str(), pwd.c_str(), false);
+  mqttClient.connect("1234", "brware", "SQRT(pi)!=314", false);
+
+    
+  
+  Serial.print ("- Aguardando MQTT: ");
+  while (!mqttClient.connected()) {
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    Serial.print("*****  Aguardando MQTT Conectar - Estado: ");
+    Serial.println(mqttClient.connected()); 
+    Serial.print (".");
+   i++; 
+   if (i > 10) {
+     break; 
+   }
+  }
+  Serial.println ("");
+
+  if ((!mqttClient.connected())) {
+      Serial.println ("MQTT NÃO Conectou");
+      mqtt.setMqttUsar (false);
+      return (0);
+  } else {
+      Serial.println ("MQTT Conectou");
+      sendTopicoConnect (IDmqtt + ";CONECTOU");  
+      mqttClient.onMessage(mqttMessageReceived);
+      mqttClient.subscribe(mqtt.getTopicoSub ());
+      mqttClient.subscribe(mqtt.getTopicoConfigSub ());
+      
+      // Configuração do Ultimo testamento
+      str = mqtt.getTopicoWill ();
+      strcpy (aux,str.c_str());
+      str2 = IDmqtt + ";DESCONEXÃO INESPERADA"; 
+      mqttClient.setWill(aux, (char *)str2.c_str());
+
+      return (1);
+  }
+  
+  
+
+  
+}
+
+
+
+//------------------------------------------------------------------------------------------
+//
+// ----------------- Envia menssagem para topico principal
+//
+//------------------------------------------------------------------------------------------
+
+void sendTopicoPub (String msg) {
+
+     if (mqtt.getMqttUsar () && mqttClient.connected()) {
+
+       mqttClient.publish(mqtt.getTopicoPub (), msg); 
+       Serial.println ("Enviado para " + mqtt.getTopicoPub () + " a msg: " + msg);
+    } else
+        if (mqttClient.connected())
+            Serial.println ("--> Status enviar MQTT: ON");
+        else
+            Serial.println ("--> Status enviar MQTT: OFF");  
+
+
+
+}
+
+
+//------------------------------------------------------------------------------------------
+//
+// ----------------- Envia menssagem para topico de quanto conecta
+//
+//------------------------------------------------------------------------------------------
+
+void sendTopicoConnect (String msg) {
+
+     if (mqtt.getMqttUsar () && mqttClient.connected()) {
+
+       mqttClient.publish(mqtt.getTopicoConnect (), msg);
+
+    }
+
+}
+
+
+//------------------------------------------------------------------------------------------
+//
+// ----------------- Envia menssagem para topico de configuração
+//
+//------------------------------------------------------------------------------------------
+
+void sendTopicoConfigPub (String msg) {
+
+     if (mqtt.getMqttUsar () && mqttClient.connected()) {
+
+       mqttClient.publish(mqtt.getTopicoConfigPub (), msg);
+
+    }
+
+}
+
+/*
+void setMsgPub (String msg) {
+  
+  msgPub = msg;
+
+}
+*/
+
+//------------------------------------------------------------------------------------------
+//
+// ----------------- Funçao de Call Back Do MQTT
+//
+//------------------------------------------------------------------------------------------
+
+void mqttMessageReceived(String &topic, String &payload) {
+  
+  Serial.println("Recebeu pelo MQTT: " + topic + " - " + payload);
+  
+  //trataComando (payload);
+  
+}
+
+
+//------------------------------------------------------------------------------------------
+//
+// ----------------- Task de Loop do MQTT
+//
+//------------------------------------------------------------------------------------------
+
+void MqttLoop (void *pvParameter) {
+
+    while (true) {
+      vTaskDelay(pdMS_TO_TICKS(200));
+/*      if (mqtt.msgPub != "") {
+            sendTopicoPub (msgPub);
+            msgPub = "";
+          }*/
+          mqttClient.loop();
+          vTaskDelay(pdMS_TO_TICKS(500));
+      }
+   
+}
